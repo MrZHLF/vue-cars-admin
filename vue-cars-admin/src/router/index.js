@@ -84,6 +84,36 @@ const routes = [
       }
     ]
   },
+  // 车辆管理
+  {
+    path: "/cars",
+    name: "Cars",
+    meta: {
+      title: "车辆管理",
+      icon: "console",
+      iconClass: "icon_console"
+    },
+    component: Layout,
+    children: [
+      
+      {
+        path: "/carsIndex",
+        name: "CarsIndex",
+        meta: {
+          title: "车辆列表"
+        },
+        component: () => import("../views/Cars/index.vue"),
+      },
+      {
+        path: "/carsAdd",
+        name: "CarsAdd",
+        meta: {
+          title: "新增车辆"
+        },
+        component: () => import("../views/Cars/add.vue"),
+      }
+    ]
+  },
 ];
 
 const router = new VueRouter({
