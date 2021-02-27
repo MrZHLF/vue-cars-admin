@@ -8,7 +8,8 @@ export function mapSetMarker(lnglat,map) {
     marker = new AMap.Marker({
         position:[lnglat.lng,lnglat.lat]
     })
-    map.add(marker)
+    map.add(marker);
+    map.setFitView();
 }
 
 

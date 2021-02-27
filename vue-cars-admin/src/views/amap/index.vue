@@ -11,6 +11,12 @@ import {addressSetMapCenter} from './location'
 import {mapSetMarker,amapClearMarker} from './marker'
 export default {
     name:"Amap",
+    props:{
+        options:{
+            type:Object,
+            default:()=>{}
+        }
+    },
     data() {
         return {
             lnglat:{},
@@ -22,11 +28,7 @@ export default {
     mounted(){
         lazyAMapApiLoaderInstance.load().then(() => {
             // 高德地图初始化
-            this.map = new AMap.Map('amapContainer', {
-                center: [116.404765,39.918052],
-                zoo:this.zoom //初始化地图层级
-            });
-
+            this.mapCreate();
             this.map.on('click',(e)=> {
                 const lnglat = getLonLag(e)
                 this.lnglat = lnglat //经纬度
@@ -45,16 +47,38 @@ export default {
 
     },
     methods:{
+        mapCreate(params) {
+            this.map = new AMap.Map('amapContainer', {
+                center: [116.404765, 39.918052],
+                zoom: this.zoom, //初始化地图层级
+            });
+            this.map.on("complete", () => {
+                this.mapLoad();
+            });
+        },
+        mapLoad(){
+            // 地图加载完成
+            if(this.options.mapLoad) {
+                this.$emit('callback', {
+                    function: "mapLoad"
+                })
+            }
+        },
         setMapCenter(value) {
             addressSetMapCenter(value,this.map)
         },
-        setMarker(){
+        setMarker(lnglat){
             // 设置覆盖物
-            mapSetMarker(this.lnglat,this.map)
+            console.log(333);
+            mapSetMarker(lnglat || this.lnglat,this.map)
         },
         // 清除点
         clearMarker() {
             amapClearMarker(this.map)
+        },
+        mapDestroy() {
+            // 销毁地图
+            this.map && this.map.destroy();
         }
     }
 }
