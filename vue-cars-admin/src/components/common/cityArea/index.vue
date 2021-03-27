@@ -1,5 +1,7 @@
 <template>
   <el-cascader
+    :class='{ initValueFlag : "cascader-input"}'
+    :placeholder="initValue"
     v-model="value"
     :options="cascader_options"
     :props="cascader_props"
@@ -24,6 +26,8 @@ export default {
   data() {
     const _this = this
     return {
+      initValue:"请选择省市区",
+      initValueFlag:false,
       address: [],
       addressData: {},
       value: '',
@@ -71,6 +75,12 @@ export default {
     }
   },
   methods: {
+    initDefault(value) {
+      if (value) {
+        this.initValueFlag = true
+        this.initValue = value.split(",").join(" / ")
+      }
+    },
     changeValue(value) {
       this.$emit('update:cityAreaValue', value.join())
       const lastCode = value[value.length - 1]

@@ -70,10 +70,14 @@
       
     </div>
     <!-- 表格 -->
-    <el-table :data="tableData" border style="width: 100%">
+    <el-table :data="tableData" border style="width: 100%" v-loading="table_loading">
       <el-table-column type="selection" width="35"></el-table-column>
       <el-table-column prop="parkingName" label="停车场名称"> </el-table-column>
-      <el-table-column prop="type" label="类型"> </el-table-column>
+      <el-table-column prop="type" label="类型">
+        <template slot-scope="scope">
+          <span>{{getType(scope.row.type)}}</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="address" label="区域"> </el-table-column>
       <el-table-column prop="carsNumber" label="可停放车辆"> </el-table-column>
       <el-table-column prop="status" label="禁启用">
@@ -96,7 +100,7 @@
       <el-table-column label="操作">
         <template slot-scope="scope">
           <el-button size="mini" @click="edit(scope.row.id)">编辑</el-button>
-          <el-button size="mini" type="danger">删除</el-button>
+          <el-button size="mini" type="danger" @click="del(scope.row.id)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -119,7 +123,7 @@
 </template>
 
 <script>
-import { ParkingList } from '@/api/parking'
+import { ParkingList,ParkingDelete } from '@/api/parking'
 import CityArea from './../../components/common/cityArea/index'
 import showMapLoaction from './../../components/dialog/showMapLoaction'
 export default {
@@ -145,7 +149,8 @@ export default {
       keyword: "",
       tableData: [],
       map_show:false,
-      parking_data:{}
+      parking_data:{},
+      table_loading: false
     }
   },
   methods: {
@@ -190,16 +195,19 @@ export default {
       if (this.keyword && this.search_key) {
         requstData[this.search_key] = this.keyword
       }
-
+      this.table_loading = true
       ParkingList(requstData).then((response) => {
         console.log(response, 'ddd')
         let data = response.data
+        this.table_loading = false
         if (data) {
           this.tableData = data.data
         }
         if (data.total) {
           this.total = data.total
         }
+      }).catch(()=>{
+        this.table_loading = false
       })
     },
     handleSizeChange(val) {
@@ -211,6 +219,32 @@ export default {
       this.pageNumber = val
       this.getParking()
     },
+    getType(value) {
+      const data = this.type.filter(item => item.value == value)
+      if(data && data.length > 0) {
+        return data[0].label
+      }
+    },
+    del(id) {
+      this.$confirm('确定删除此信息, 是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        ParkingDelete({id}).then(res => {
+          this.$message({
+            type: 'success',
+            message: '删除成功!'
+          });
+          this.getParking()
+        })
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消删除'
+        });          
+      });
+    }
   },
   beforeMount() {
     this.getParking()

@@ -42,7 +42,7 @@
 <script>
 import AMap from '../amap/index'
 import CityArea from './../../components/common/cityArea/index'
-import {ParkingAdd,ParkingDetailed} from '@/api/parking'
+import {ParkingAdd,ParkingDetailed,ParkingEdit} from '@/api/parking'
 export default {
   name: 'parkingAdd',
   components:{
@@ -111,6 +111,8 @@ export default {
             lat: splitLnglat[1]
         }
         this.$refs.amap.setMarker(lnglat)
+        // 初始化省市区
+        this.$refs.cityArea.initDefault(data.region);
       })
     },
     mapLoad(){
@@ -132,7 +134,7 @@ export default {
       this.$refs[formName].validate((valid) => {
         if (valid) {
           console.log(this.form);
-          this.addParKing()
+         this.id ?  this.editParking() :  this.addParKing()
         } else {
           console.log('error submit!!');
           return false;
@@ -140,6 +142,7 @@ export default {
       });
     },
     addParKing() {
+      // 添加
       this.button_loading = true
       ParkingAdd(this.form).then(res=>{
         this.$message({
@@ -148,6 +151,27 @@ export default {
         })
         this.button_loading = false
         this.reset("form")
+        this.$router.push({
+          name:"ParkingIndex"
+        })
+      }).catch(error=>{
+        this.button_loading = false
+      })
+    },
+    editParking(){
+      // 修改
+      let requestData = JSON.parse(JSON.stringify(this.form))
+      requestData.id = this.id
+      this.button_loading = true
+      ParkingEdit(requestData).then(res=>{
+        this.$message({
+          type:"primary",
+          message: res.message
+        })
+        this.button_loading = false
+        this.$router.push({
+          name:"ParkingIndex"
+        })
       }).catch(error=>{
         this.button_loading = false
       })
