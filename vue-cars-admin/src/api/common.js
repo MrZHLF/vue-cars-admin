@@ -15,6 +15,7 @@ export function GetCity(data = {}){
  * 获取table列表
  */
 export function GetTableData(params = {}){
+    console.log(params,'params');
     return service.request({
         method: "post",
         url: requestUrl[params.url],

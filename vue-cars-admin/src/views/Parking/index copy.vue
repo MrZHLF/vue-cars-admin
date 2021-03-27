@@ -7,7 +7,7 @@
             <el-form-item label="区域">
               <CityArea
                 ref="cityArea"
-                :cityAreaValue.sync="form.lnglat"
+                :cityAreaValue.sync="form.area"
                 @callback="callbackComponent"
               />
             </el-form-item>
@@ -18,7 +18,7 @@
                 class="width-120"
               >
                 <el-option
-                  v-for="(item, index) in parking_type"
+                  v-for="(item, index) in type"
                   :label="item.label"
                   :value="item.value"
                   :key="index"
@@ -33,7 +33,7 @@
                 class="width-120"
               >
                 <el-option
-                  v-for="(item, index) in parking_status"
+                  v-for="(item, index) in status"
                   :label="item.label"
                   :value="item.value"
                   :key="index"
@@ -69,103 +69,85 @@
       </el-row>
       
     </div>
-    <tableData ref="table" :config="table_config">
-      <!-- 禁启用 -->
-      <template v-slot:status="slotData">
-        <el-switch
-           v-model="slotData.data.status"
+    <!-- 表格 -->
+    <el-table :data="tableData" border style="width: 100%" v-loading="table_loading">
+      <el-table-column type="selection" width="35"></el-table-column>
+      <el-table-column prop="parkingName" label="停车场名称"> </el-table-column>
+      <el-table-column prop="type" label="类型">
+        <template slot-scope="scope">
+          <span>{{getType(scope.row.type)}}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="address" label="区域"> </el-table-column>
+      <el-table-column prop="carsNumber" label="可停放车辆"> </el-table-column>
+      <el-table-column prop="status" label="禁启用">
+        <template slot-scope="scope">
+          <el-switch
+            v-model="scope.row.status"
             active-value="1"
             inactive-value="2"
             active-color="#13ce66"
             inactive-color="#ff4949"
           >
-        </el-switch>  
-      </template>
-      <!-- 查看地图 -->
-      <template v-slot:lnglat="slotData">
-        <el-button type="success" size="mini" @click="showMap(slotData.data)">查看地图</el-button> 
-      </template>
-      <!-- 操作 -->
-      <template v-slot:operation="slotData">
-        <el-button size="mini" @click="edit(slotData.data.id)">编辑</el-button>
-        <el-button size="mini" type="danger" @click="delConfirm(slotData.data.id)">删除</el-button>
-      </template>
-    </tableData>
+          </el-switch>
+        </template>
+      </el-table-column>
+      <el-table-column prop="area" label="查看位置"> 
+        <template slot-scope="scope">
+            <el-button type="success" size="mini" @click="showMap(scope.row)">查看地图</el-button>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作">
+        <template slot-scope="scope">
+          <el-button size="mini" @click="edit(scope.row.id)">编辑</el-button>
+          <el-button size="mini" type="danger" @click="del(scope.row.id)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      class="pull-right padding-top-30"
+      background
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      :current-page="currentPage"
+      :page-sizes="[10, 20, 50, 100]"
+      :page-size="100"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="total"
+    >
+    </el-pagination>
+
     <showMapLoaction :flagVisible.sync="map_show" :data="parking_data"/>
   </div>
 </template>
 
 <script>
-import {ParkingDelete } from '@/api/parking'
+import { ParkingList,ParkingDelete } from '@/api/parking'
 import CityArea from './../../components/common/cityArea/index'
 import showMapLoaction from './../../components/dialog/showMapLoaction'
-import tableData from './../../components/tableData/index'
-import { address,parkingType } from './../../utils/common'
 export default {
   name: 'Parking',
   components: {
     CityArea,
-    showMapLoaction,
-    tableData
+    showMapLoaction
   },
   data() {
     return {
-      // 表格配置
-      table_config:{
-        thead: [
-          {label:"停车场名称",prop:"parkingName"},
-          {
-            label:"类型",
-            prop:"type",
-            type:"function",
-            callback:(row,prop)=>{
-              return parkingType(row[prop])
-            }
-          },
-          {
-            label:"区域",
-            prop:"address",
-            type:"function",
-            callback:(row,prop)=>{
-              return address(row[prop])
-            }
-          },
-          {label:"可停放车辆",prop:"carsNumber"},
-          {
-            label:"禁启用",
-            prop:"status",
-            type:"slot",
-            slotName:"status"
-          },
-          {
-            label:"查看位置",
-            prop:"lnglat",
-            type:"slot",
-            slotName:"lnglat"
-          },
-          {
-            label:"操作",
-            type:"slot",
-            slotName:"operation"
-          },
-        ],
-        url: "parkingList",
-        data:{
-           pageSize: 10,
-          pageNumber: 1,
-        }
-      },
+      total: 0,
+      currentPage: 1,
       pageSize: 10,
       pageNumber: 1,
-      parking_status: this.$store.state.config.parking_status,
-      parking_type: this.$store.state.config.parking_type,
+      status: this.$store.state.config.parking_status,
+      type: this.$store.state.config.parking_type,
       form: {
-        lnglat: '',
+        area: '',
         type: '',
         status: '',
       },
       search_key:"",
       keyword: "",
+      tableData: [],
       map_show:false,
       parking_data:{},
       table_loading: false
@@ -183,15 +165,24 @@ export default {
     },
     showMap(data) {
       // 查看地图
-      console.log(data,'ojkjk');
+      console.log(data);
       this.map_show = true
       this.parking_data = data
     },
     search(){
       // 搜索
+      this.getParking()
+    },
+    callbackComponent(params) {
+      if (params.function) {
+        this[params.function](params.data)
+      }
+    },
+    getParking() {
+      // 列表
       const requstData = {
-        pageSize: 10,
-        pageNumber: 1,
+        pageSize: this.pageSize,
+        pageNumber: this.pageNumber,
       }
       // 过滤筛选
       const filterData = JSON.parse(JSON.stringify(this.form))
@@ -204,22 +195,37 @@ export default {
       if (this.keyword && this.search_key) {
         requstData[this.search_key] = this.keyword
       }
-      // 调用子组件的方法
-      this.$refs.table.requestData(requstData)
+      this.table_loading = true
+      ParkingList(requstData).then((response) => {
+        console.log(response, 'ddd')
+        let data = response.data
+        this.table_loading = false
+        if (data) {
+          this.tableData = data.data
+        }
+        if (data.total) {
+          this.total = data.total
+        }
+      }).catch(()=>{
+        this.table_loading = false
+      })
     },
-    callbackComponent(params) {
-      if (params.function) {
-        this[params.function](params.data)
-      }
+    handleSizeChange(val) {
+      // 页码
+      this.pageSize = val
+      this.getParking()
     },
-    
+    handleCurrentChange(val) {
+      this.pageNumber = val
+      this.getParking()
+    },
     getType(value) {
-      const data = this.parking_type.filter(item => item.value == value)
+      const data = this.type.filter(item => item.value == value)
       if(data && data.length > 0) {
         return data[0].label
       }
     },
-    delConfirm(id) {
+    del(id) {
       this.$confirm('确定删除此信息, 是否继续?', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -230,8 +236,7 @@ export default {
             type: 'success',
             message: '删除成功!'
           });
-          // 调用子组件的方法
-          this.$refs.table.requestData()
+          this.getParking()
         })
       }).catch(() => {
         this.$message({
@@ -240,6 +245,11 @@ export default {
         });          
       });
     }
-  }
+  },
+  beforeMount() {
+    this.getParking()
+  },
 }
 </script>
+
+<style lang="sass" scoped></style>
