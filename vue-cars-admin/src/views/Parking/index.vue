@@ -73,9 +73,9 @@
       <!-- 禁启用 -->
       <template v-slot:status="slotData">
         <el-switch
+          :disabled="slotData.data.id == switch_disable"
+          @change="switchChange(slotData.data)"
            v-model="slotData.data.status"
-            active-value="1"
-            inactive-value="2"
             active-color="#13ce66"
             inactive-color="#ff4949"
           >
@@ -88,7 +88,7 @@
       <!-- 操作 -->
       <template v-slot:operation="slotData">
         <el-button size="mini" @click="edit(slotData.data.id)">编辑</el-button>
-        <el-button size="mini" type="danger" @click="delConfirm(slotData.data.id)">删除</el-button>
+        <el-button size="mini" :loading="slotData.data.id == rowId" type="danger" @click="delConfirm(slotData.data.id)">删除</el-button>
       </template>
     </tableData>
     <showMapLoaction :flagVisible.sync="map_show" :data="parking_data"/>
@@ -96,7 +96,7 @@
 </template>
 
 <script>
-import {ParkingDelete } from '@/api/parking'
+import {ParkingDelete,ParkingStatus } from '@/api/parking'
 import CityArea from './../../components/common/cityArea/index'
 import showMapLoaction from './../../components/dialog/showMapLoaction'
 import tableData from './../../components/tableData/index'
@@ -157,13 +157,15 @@ export default {
       },
       pageSize: 10,
       pageNumber: 1,
-      parking_status: this.$store.state.config.parking_status,
+      parking_status: this.$store.state.config.radio_disabled,
       parking_type: this.$store.state.config.parking_type,
       form: {
         lnglat: '',
         type: '',
         status: '',
       },
+      switch_disable:"", //防止重复切换禁启用
+      rowId:"", //防止重复删除
       search_key:"",
       keyword: "",
       map_show:false,
@@ -172,6 +174,23 @@ export default {
     }
   },
   methods: {
+    switchChange(data){
+      // 禁启用
+      const requestData = {
+        id:data.id,
+        status:data.status
+      }
+      this.switch_disable = data.id
+      ParkingStatus(requestData).then(response=>{
+        this.$message({
+          type:"success",
+          message:response.message
+        })
+        this.switch_disable = ''
+      }).catch((err) =>{
+        this.switch_disable = ''
+      })
+    },
     edit(id){
       // 编辑
       this.$router.push({
@@ -225,13 +244,17 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
+        this.rowId = id
         ParkingDelete({id}).then(res => {
           this.$message({
             type: 'success',
             message: '删除成功!'
           });
+          this.rowId = ""
           // 调用子组件的方法
           this.$refs.table.requestData()
+        }).catch(() =>{
+          this.rowId = ""
         })
       }).catch(() => {
         this.$message({

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-table :data="table_data" border style="width: 100%">
+    <el-table :data="table_data" v-loading="loading_table" element-loading-text="加载中..." border style="width: 100%">
       <el-table-column
         v-if="table_config.checkbox"
         type="selection"
@@ -16,6 +16,12 @@
 				<el-table-column v-else-if="item.type === 'slot'" :key="item.prop" :prop="item.prop" :label="item.label" :width="item.width">
 						<template slot-scope="scope">
 								<slot :name="item.slotName" :data="scope.row"></slot>
+						</template>
+				</el-table-column>
+
+        <el-table-column v-else-if="item.type === 'image'" :key="item.prop" :prop="item.prop" :label="item.label" :width="item.width">
+						<template slot-scope="scope">
+								<img :src="scope.row.imgUrl"  :width="item.imgWidth" alt="">
 						</template>
 				</el-table-column>
 				
@@ -50,6 +56,7 @@ export default {
   name: 'TableComponent',
   data() {
     return {
+			loading_table:true,
 			total: 0,
       currentPage: 1,
       table_data: [],
@@ -77,6 +84,7 @@ export default {
         url: this.table_config.url,
         data: this.table_config.data
       }
+			this.loading_table = true
       GetTableData(requestData).then((response) => {
         console.log(response, 'response')
         let data = response.data
@@ -85,9 +93,12 @@ export default {
 					// 页码
 					this.$nextTick(() =>{
 						this.total = data.total
+						this.loading_table = false
 					})
         }
-      })
+      }).catch(()=>{
+					this.loading_table = false
+			})
     },
 		requestData(params = ""){
 			if(params) {

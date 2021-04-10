@@ -7,74 +7,29 @@
       class="cars-dialog-center"
 			:close-on-click-modal="false"
 			@close="close"
+      @opened="opened"
     >
-      <el-form ref="form" :model="form" label-width="120px">
-        <el-form-item label="车辆品牌">
-          <el-input v-model="form.name"></el-input>
-        </el-form-item>
-        <el-form-item label="品牌型号">
-          <el-cascader
-            v-model="form.area"
-            :options="options"
-            :props="{ expandTrigger: 'hover' }"
-          >
-          </el-cascader>
-        </el-form-item>
-        <el-form-item label="LOGO">
-          <div class="upload-img-wrap">
+    <VueForm :formData="form_data" :formItem="form_item" :formHandler="form_handler">
+      <template v-slot:logo>
+        <div class="upload-img-wrap">
             <div class="upload-img">
-              <img
-                src="https://ss0.baidu.com/7Po3dSag_xI4khGko9WTAnF6hhy/zhidao/pic/item/9c16fdfaaf51f3de9ba8ee1194eef01f3a2979a8.jpg"
-                alt=""
-              />
+              <img :src="logo_current" v-show="logo_current"/>
             </div>
             <ul class="img-list">
-              <li>
-                <img
-                  src="https://ss0.baidu.com/7Po3dSag_xI4khGko9WTAnF6hhy/zhidao/pic/item/9c16fdfaaf51f3de9ba8ee1194eef01f3a2979a8.jpg"
-                  alt=""
-                />
-              </li>
-              <li>
-                <img
-                  src="https://ss0.baidu.com/7Po3dSag_xI4khGko9WTAnF6hhy/zhidao/pic/item/9c16fdfaaf51f3de9ba8ee1194eef01f3a2979a8.jpg"
-                  alt=""
-                />
-              </li>
-              <li>
-                <img
-                  src="https://ss0.baidu.com/7Po3dSag_xI4khGko9WTAnF6hhy/zhidao/pic/item/9c16fdfaaf51f3de9ba8ee1194eef01f3a2979a8.jpg"
-                  alt=""
-                />
-              </li>
-              <li>
-                <img
-                  src="https://ss0.baidu.com/7Po3dSag_xI4khGko9WTAnF6hhy/zhidao/pic/item/9c16fdfaaf51f3de9ba8ee1194eef01f3a2979a8.jpg"
-                  alt=""
-                />
+              <li v-for="item in logo" :key="item.id" @click="logo_current = item.img"> 
+                <img :src="item.img"/>
               </li>
             </ul>
           </div>
-        </el-form-item>
-        <el-form-item label="禁启用">
-          <el-radio-group v-model="form.disabled">
-            <el-radio label="禁用"></el-radio>
-            <el-radio label="启用"></el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary">立即创建</el-button>
-        </el-form-item>
-      </el-form>
-      <!-- <div slot="footer" class="dialog-footer">
-        <el-button @click="flagVisible = false">取 消</el-button>
-        <el-button type="primary" @click="flagVisible = false">确 定</el-button>
-      </div> -->
+      </template>
+    </VueForm>
     </el-dialog>
   </div>
 </template>
 
 <script>
+import { BrandLogo,BrandAdd,BrandDetailed,BrandEdit } from '@/api/brand'
+import VueForm from '@c/form'
 export default {
   name: 'addCarsBrand',
   props: {
@@ -82,29 +37,127 @@ export default {
       type: Boolean,
       default: false,
     },
+    data: {
+      type: Object,
+      defult: () => {}
+    }
+  },
+  components:{
+    VueForm
   },
   data() {
     return {
 			dialogVisible:false,
-      form: {
-        name: '',
-        area: '',
-        disabled: 0,
-        type: '',
+      // 表单数据
+      form_data:{
+        nameCh: '',
+        nameEn: '',
+        imgUrl: 0,
+        status: '',
+        content: ""
       },
-
-      options: [
+      // 表单项
+      form_item:[
         {
-          value: 'zhinan',
-          label: '河南省',
-          children: [{ value: '222', label: '郑州市' }],
+          type:'Input', 
+          label:"品牌中文",
+          placeholder:"请输入品牌中文",
+          prop:"nameCh",
         },
+        {
+          type:'Input', 
+          label:"品牌英文",
+          placeholder:"请输入品牌英文",
+          prop:"nameEn",
+        },
+        {type:'Slot',label:"Logo",slotName:"logo"},
+        {
+          type:'Radio', 
+          label:"禁启用",
+          prop:"status",
+          options:this.$store.state.config.radio_disabled
+        }
       ],
+      form_handler:[
+        {label:"确定",key:"submit",type:"primary", handler: ()=> this.submit()},
+      ],
+      form: {
+        nameCh: '',
+        nameEn: '',
+        imgUrl: 0,
+        status: '',
+        content: ""
+      },
+      radio_disabled:this.$store.state.config.radio_disabled,
+      logo_current:"",
+      logo:[],
     }
 	},
 	methods: {
+    opened(){
+      this.getBrandLogo()
+      this.getDetailed()
+    },
+   /** 获取详情 */
+    getDetailed(){
+      this.form_data = this.data;
+      this.logo_current = this.data.imgUrl;
+      this.form_data.imgUrl = this.data.imgUrl;
+    },
+    /** 获取LOGO */
+    getBrandLogo(){
+      // 存在数据时，不再请求接口
+      if(this.logo.length != 0) { return false; }
+      // 没有数据时
+      BrandLogo().then(response => {
+        const data = response.data;
+        if(data) { this.logo = data; }
+      })
+    },
+    submit(){
+      this.data.id ? this.edit() : this.add();
+    },
+    /** 修改 */
+    edit(){
+      this.form_data.imgUrl = this.logo_current;
+      const requestData = JSON.parse(JSON.stringify(this.form_data));
+      BrandEdit(requestData).then(response => {
+        this.$message({
+          type: "success",
+          message: response.message
+        })
+        this.close();
+        this.$emit("callbackComponent", {
+          function: "search"
+        })
+      })
+    },
+   /** 添加 */
+    add(){
+      this.form_data.imgUrl = this.logo_current;
+      BrandAdd(this.form_data).then(response => {
+        this.$message({
+          type: "success",
+          message: response.message
+        })
+        this.close();
+        this.$emit("callbackComponent", {
+          function: "search"
+        })
+      })
+    },
+    reset(formName) {
+      for(let key in this.form_data) {
+        this.form_data[key] = "";
+      }
+      // 清除选中的LOGO
+      this.logo_current = "";
+    },
 		close(){
-			this.$emit('update:flagVisible',false)
+			this.reset("form");
+      // 关闭窗口
+      this.dialogVisible = false;
+      this.$emit("update:flagVisible", false); // {}
 		}
 	},
 	watch:{
