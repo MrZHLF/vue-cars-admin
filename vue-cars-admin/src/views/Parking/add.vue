@@ -163,7 +163,7 @@ export default {
       this.getDetaile()
     },
     getLnglat(data){
-      this.form.lnglat = data.lnglat.value
+      this.form_data.lnglat = data.lnglat.value
     },
     callbackComponent(params) {
       if(params.function){
